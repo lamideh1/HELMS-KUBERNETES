@@ -1,0 +1,188 @@
+
+---
+
+## **Step 1: Customize Your Helm Chart**
+
+### **1.1: Explore the Webapp Directory**
+
+When you run `helm create webapp`, it generates the following directory structure:
+
+```
+helm-web-app/
+  └── webapp/
+      ├── Chart.yaml       # Metadata about your Helm chart
+      ├── values.yaml      # Configuration for your application
+      └── templates/       # Kubernetes YAML templates
+```
+
+### **1.2: Modify `values.yaml`**
+
+#### **Where to Edit:**
+
+Open the `values.yaml` file located in the `webapp` directory.
+
+#### **What to Do:**
+
+* Find the **image** section, and modify it to use the **Nginx stable version** and set the **replica count** to 2:
+
+```yaml
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: stable
+  pullPolicy: IfNotPresent
+```
+
+* **Explanation**:
+
+  * `replicaCount: 2`: This will deploy two replicas (or instances) of the Nginx container.
+  * `image.repository: nginx`: This specifies the Nginx image repository.
+  * `image.tag: stable`: Uses the `stable` tag for Nginx.
+  * `image.pullPolicy: IfNotPresent`: This ensures that Kubernetes only pulls the image if it is not already available locally.
+
+### **1.3: Modify `deployment.yaml` (Customize Resources)**
+
+#### **Where to Edit:**
+
+Open the `deployment.yaml` file inside the `templates/` directory.
+
+#### **What to Do:**
+
+* Find the line with `{{- toYaml .Values.resources | nindent 12 }}` under `spec.template.spec.containers.resources`.
+* **Remove** the line mentioned above, and add the following **resource limits** and **requests**:
+
+```yaml
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"
+```
+
+* **Explanation**:
+
+  * **requests**: Tells Kubernetes how much CPU and memory to allocate to each container.
+  * **limits**: Sets the maximum amount of CPU and memory that a container can consume.
+
+### **1.4: Commit and Push Changes to Git**
+
+#### **Where to Do It:**
+
+In your terminal (make sure you are inside the `helm-web-app` directory).
+
+#### **What to Do:**
+
+Run these commands to commit and push the changes to your Git repository:
+
+```bash
+git add .
+git commit -m "Customized Helm chart with Nginx and resource limits"
+git push
+```
+
+---
+
+## **Step 2: Deploy Your Application**
+
+### **2.1: Deploy with Helm**
+
+#### **Where to Do It:**
+
+In your terminal, make sure you're in the **root of the `helm-web-app` project directory** (where the `webapp` directory is located).
+
+#### **What to Do:**
+
+Run the following Helm command to deploy the application:
+
+```bash
+helm install my-webapp ./webapp
+```
+
+* This command will deploy your application (`my-webapp`) based on the Helm chart you created in the `webapp` directory.
+
+### **2.2: Check Deployment Status**
+
+#### **Where to Do It:**
+
+In the terminal.
+
+#### **What to Do:**
+
+After running the `helm install` command, check the deployment status with:
+
+```bash
+kubectl get deployments
+```
+
+This will show the deployments in your Kubernetes cluster, and you should see `my-webapp` listed there.
+
+### **2.3: Access the Application URL**
+
+#### **Where to Do It:**
+
+In the terminal.
+
+#### **What to Do:**
+
+To access your web app, follow these steps:
+
+1. **Get the Pod name**:
+   Run the following command to get the name of the pod running your web app:
+
+```bash
+export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=webapp,app.kubernetes.io/instance=my-webapp" -o jsonpath="{.items[0].metadata.name}")
+```
+
+2. **Get the container port**:
+   Run this command to retrieve the container's exposed port:
+
+```bash
+export CONTAINER_PORT=$(kubectl get pod --namespace default $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+```
+
+3. **Port-forward to localhost**:
+   Set up port forwarding from your local machine to the Kubernetes pod to access the application:
+
+```bash
+kubectl --namespace default port-forward $POD_NAME 8081:$CONTAINER_PORT
+```
+
+4. **Visit the Application**:
+   Now, open a browser and visit:
+
+```
+http://127.0.0.1:8081
+```
+
+This should display your Nginx web application running in Kubernetes.
+
+---
+
+## **Optional Clean-Up Step**
+
+If you want to delete the deployed application after testing, run:
+
+```bash
+helm uninstall my-webapp
+```
+
+---
+
+### **Summary of What and Where:**
+
+1. **Customizing the Helm Chart**:
+
+   * **Where**: `values.yaml` (set the Nginx image and replica count) and `templates/deployment.yaml` (define resource requests/limits).
+   * **What to Do**: Modify the files for Nginx configuration, replica count, and resource allocation.
+
+2. **Deploying the Application**:
+
+   * **Where**: Root of `helm-web-app` (project directory).
+   * **What to Do**: Run `helm install`, then verify deployment and access the app via port forwarding.
+
+---
+
+By following these steps, you will successfully deploy a web application using Helm in Kubernetes! Let me know if you need further clarification or help with CI/CD integration.
